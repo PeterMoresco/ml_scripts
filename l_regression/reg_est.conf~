@@ -1,0 +1,26 @@
+---
+# This is a template for the configuration file
+# for the regression_estimate script
+DTR:
+    # Options: **squared_error**,
+    # friedman_mse, absolute_error,
+    # poisson
+    criterion: 
+     - friedman_mse
+     - poisson
+    # Options: **best**, random
+    splitter: 
+     - random
+     - best
+    #Options: int, **None**
+    max_depth:
+     - 2
+     - 3
+     - 5
+     - 10
+     - 50
+     - 100
+    # Options: int, **None**
+    random_state:
+     - 1
+LR:
