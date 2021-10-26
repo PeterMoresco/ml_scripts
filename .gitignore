@@ -1,3 +1,11 @@
+# Temporary files created by vim
+*~
+*.swp
+
+# Ignore the commit message
+message
+.future
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
