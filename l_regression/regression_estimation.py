@@ -2,8 +2,9 @@
 The goal of this script is measure the efficiency of
 different regression and approximation methods.
 '''
+import click
 import numpy as np
-from yaml import load
+from yaml import load, safe_load
 import pandas as pd
 from itertools import product
 from sklearn.metrics import r2_score
@@ -36,7 +37,16 @@ class regression_test:
         for k, v in regressors.items():
             if self.conf.get(k).get('Test'):
                 self.conf[k].pop('Test')
-                v()
+                states = [v for v in self.conf[k].values()]
+                scenarios = list(product(*states))
+                for scene in scenarios:
+                    clf = v(scene)
+                    clf.fit(self.X_train, self.y_train)   
+                    score = clf.score(self.X_test, self.y_test)
+                    mae = mean_absolute_error(self.y_test, clf.predict(self.X_test))
+                    # The join(map(***)) is due to the fact that join
+                    # method only works in strings
+                    self.add_result([k, '-'.join(map(str, scene)), score, mae])
 
         # Print the best results
         print('The best 5 results were:')
@@ -48,77 +58,36 @@ class regression_test:
 
 
     # DecisionTree Regression
-    def DTR(self):
-        states = [v for v in self.conf['DecisionTreeRegressor'].values()]
-        scenarios = list(product(*states))
+    def DTR(self, scene):
         from sklearn import tree
-        for scene in scenarios:
-            clf = tree.DecisionTreeRegressor(
+        return tree.DecisionTreeRegressor(
                     criterion=scene[0],
                     splitter=scene[1],
                     max_depth=scene[2])
-            clf = clf.fit(self.X_train, self.y_train)
-            score = clf.score(self.X_test, self.y_test)
-            mae = mean_absolute_error(self.y_test, clf.predict(self.X_test))
-            self.add_result(['DecisionTreeRegressor', 
-                             '{}-{}-{}'.format(scene[0], scene[1], scene[2]), 
-                             score, 
-                             mae])
 
     # LinearRegression
-    def LR(self):
+    def LR(self, scene):
         from sklearn.linear_model import LinearRegression
-        clf = LinearRegression(n_jobs=-1, copy_X=True)
-        clf.fit(self.X_train, self.y_train)
-        score = clf.score(self.X_test, self.y_test)
-        mae = mean_absolute_error(self.y_test, clf.predict(self.X_test))
-        self.add_result(['LinearRegresion', '', score, mae])
+        return LinearRegression(n_jobs=-1, copy_X=True)
 
     # Ridge
-    def RD(self):
-        states = [v for v in self.conf['Ridge'].values()]
-        scenarios = list(product(*states))
+    def RD(self, scene):
         from sklearn.linear_model import Ridge
-        for scene in scenarios:
-            clf = Ridge(alpha=scene[0], copy_X=True)
-            clf.fit(self.X_train, self.y_train)
-            score = clf.score(self.X_test, self.y_test)
-            mae = mean_absolute_error(self.y_test, clf.predict(self.X_test))
-            self.add_result(['Ridge', '{}'.format(scene[0]), 
-                             score, mae])
-            
+        return Ridge(alpha=scene[0], copy_X=True)
 
     # SGDRegressor
-    def SGDR(self):
-        states = [v for v in self.conf['SGDRegressor'].values()]
-        scenarios = list(product(*states))
+    def SGDR(self, scene):
         from sklearn.linear_model import SGDRegressor
-        for scene in scenarios:
-            clf = SGDRegressor(loss=scene[0], penalty=scene[1],
+        return SGDRegressor(loss=scene[0], penalty=scene[1],
                                alpha=scene[2], max_iter=scene[3],
                                learning_rate=scene[4], power_t=scene[5])
-            clf.fit(self.X_train, self.y_train)
-            score = clf.score(self.X_test, self.y_test)
-            mae = mean_absolute_error(self.y_test, clf.predict(self.X_test))
-            self.add_result(['SGDRegressor', '{}-{}-{}-{}-{}'.format(
-                            scene[0], scene[1], scene[2], scene[3]
-                            , scene[4], scene[5]),
-                            score, mae])
 
     # ElasticNet
-    def ENET(self):
-        states = [v for v in self.conf['ElasticNet'].values()]
-        scenarios = list(product(*states))
+    def ENET(self, scene):
         from sklearn.linear_model import ElasticNet
-        for scene in scenarios:
-            clf = ElasticNet(alpha=scene[0], l1_ratio=scene[1],
-                             max_iter=scene[2])
-            clf.fit(self.X_train, self.y_train)
-            score = clf.score(self.X_test, self.y_test)
-            mae = mean_absolute_error(self.y_test, clf.predict(self.X_test))
-            self.add_result(['ElasticNet', '{}-{}-{}'.format(
-                            scene[0], scene[1], scene[2]),
-                            score, mae])
+        return ElasticNet(alpha=scene[0], l1_ratio=scene[1],
+                             max_iter=scene[2], copy_X=True)
+     
 # RandomForest
 # SVR
 # TheilSenRegressor
@@ -126,8 +95,24 @@ class regression_test:
 # HuberRegressor
 # GaussianNB
 
-def test():
-    with open('reg_est.conf', 'r') as f:
+@click.command()
+@click.option('-cf', '--config_file',
+              default='',
+              help='The yaml file with the configurations for the run.')
+@click.option('')
+@click.option('-of', '--output_file',
+              default='',
+              help='The file to save the results and parameters of the run.')
+@click.option('-br', '--best_results',
+              default=1,
+              help='1(True) or 0(False) to print the 5 best results.')
+def test(config_file, output_file, best_results):
+    '''
+    This script simulate various regressor algorithms based on the parameters described in the yaml file.
+    The results could be outputed to a csv file or/and printed to the screen.
+    '''
+    #TODO alther this part to 
+    with open('reg_est.yaml', 'r') as f:
         conf=load(f, Loader=Loader)
     from sklearn.model_selection import train_test_split
     from sklearn.datasets import load_diabetes

@@ -7,8 +7,15 @@
 # Not all the options for the regressor are avaible
 # since some of them can't match with eachother or
 # are too intricate to estimate.
+### General configurations
+General:
+    - test_size: 0.2
+    - dataset_file: vgsales.csv
+    - y_column: 
+
+###
 DecisionTreeRegressor:
-    Test: True
+    Test: On
     # Options: **squared_error**,
     # friedman_mse, absolute_error,
     # poisson
@@ -28,9 +35,9 @@ DecisionTreeRegressor:
      - 50
      - 100
 LinearRegression:
-    Test: True
+    Test: On
 Ridge:
-    Test: True
+    Test: On
     # Options: float, ndarray(target), **1.0**
     alpha:
      - 0.2
@@ -56,13 +63,8 @@ SGDRegressor:
      - 0.0001
      - 0.001
      - 0.01
-     - 0.1
-     - 0.3
-     - 0.7
-     - 1
     # Options: int, **1000**
     max_iter:
-     - 1000000
      - 10000000
     # Options: **invscaling**, constant
     # optimal, adaptative
