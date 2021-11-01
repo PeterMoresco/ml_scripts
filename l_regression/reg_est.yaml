@@ -9,10 +9,15 @@
 # are too intricate to estimate.
 ### General configurations
 General:
-    - test_size: 0.2
-    - dataset_file: vgsales.csv
-    - y_column: 
-
+    test_size: 0.2
+    # This dataset is from
+    # https://towardsdatascience.com/linear-regression-on-housing-csv-data-kaggle-10b0edc550ed
+    dataset_file: housing.csv
+    # This one should be a list
+    x_column: 
+        - housing_median_age
+        - median_income
+    y_column: median_house_value
 ###
 DecisionTreeRegressor:
     Test: On
@@ -51,31 +56,22 @@ SGDRegressor:
     # epsilon_insensitive, squared_epsilon_insensitive
     loss:
      - squared_error
-     - huber
-     - epsilon_insensitive
     # Options: **l2**, l1, elasticnet
     penalty:
-     - l2
-     - l1
      - elasticnet
     # Options: float, **1e-4**
     alpha:
      - 0.0001
-     - 0.001
-     - 0.01
     # Options: int, **1000**
     max_iter:
-     - 10000000
+     - 1000
     # Options: **invscaling**, constant
     # optimal, adaptative
     learning_rate:
      - invscaling
-     - constant
-     - optimal
     # Options: float, **0.25**
     power_t:
      - 0.25
-     - 0.75
 ElasticNet:
     Test: True
     # Options: float, **1.0**
@@ -87,8 +83,24 @@ ElasticNet:
     l1_ratio:
      - 0
      - 0.5
-     - 1
     # Options: int, **1000**
     max_iter:
      - 1000
-     - 10000
+RandomForestRegressor:
+    Test: True
+    # Options: int, **None**
+    max_depth:
+        - 5
+        - 50
+    # Options: int or float, **2**
+    min_samples_split:
+        - 2
+    # Options: int or float, **1**
+    min_samples_leaf:
+        - 1
+    # Options: **auto**, sqrt, log2
+    max_features:
+        - auto
+    # Options: float, **0.0**
+    min_impurity_decrease:
+        - 0.0

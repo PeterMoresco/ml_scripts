@@ -2,6 +2,8 @@
 The goal of this script is measure the efficiency of
 different regression and approximation methods.
 '''
+import os
+import shutil
 import click
 import numpy as np
 from yaml import load, safe_load
@@ -25,33 +27,38 @@ class regression_test:
         self.y_train = y_train
         self.y_test = y_test
         self.results = pd.DataFrame(columns=['Regressor', 'Param', 'Score', 'MAE'])
+    
 
-    def test(self):
+    def test(self, best_results=False):
         regressors = {
                 'DecisionTreeRegressor': self.DTR,
                 'LinearRegression': self.LR,
                 'Ridge': self.RD,
                 'SGDRegressor': self.SGDR,
-                'ElasticNet': self.ENET
+                'ElasticNet': self.ENET,
+                'RandomForestRegressor': self.RFR
                 }
+        term_w = shutil.get_terminal_size()[1]
         for k, v in regressors.items():
             if self.conf.get(k).get('Test'):
                 self.conf[k].pop('Test')
                 states = [v for v in self.conf[k].values()]
                 scenarios = list(product(*states))
-                for scene in scenarios:
-                    clf = v(scene)
-                    clf.fit(self.X_train, self.y_train)   
-                    score = clf.score(self.X_test, self.y_test)
-                    mae = mean_absolute_error(self.y_test, clf.predict(self.X_test))
-                    # The join(map(***)) is due to the fact that join
-                    # method only works in strings
-                    self.add_result([k, '-'.join(map(str, scene)), score, mae])
+                with click.progressbar(scenarios, fill_char='-', empty_char='o', width=term_w, color='cyan', show_pos=True, label='Running {}'.format(k)) as bar:
+                    for scene in bar:
+                        clf = v(scene)
+                        clf.fit(self.X_train, self.y_train)   
+                        score = clf.score(self.X_test, self.y_test)
+                        mae = mean_absolute_error(self.y_test, clf.predict(self.X_test))
+                        # The join(map(***)) is due to the fact that join
+                        # method only works in strings
+                        self.add_result([k, '-'.join(map(str, scene)), score, mae])
 
-        # Print the best results
-        print('The best 5 results were:')
-        self.results.sort_values(by=['Score'], ascending=False, inplace=True)
-        print(self.results[:5])
+        if best_results:
+            # Print the best results
+            print('The best 5 results were:')
+            self.results.sort_values(by=['Score'], ascending=False, inplace=True)
+            print(self.results[:5])
         
     def add_result(self, res):
         self.results.loc[len(self.results.index)] = res
@@ -88,7 +95,10 @@ class regression_test:
         return ElasticNet(alpha=scene[0], l1_ratio=scene[1],
                              max_iter=scene[2], copy_X=True)
      
-# RandomForest
+    # RandomForest
+    def RFR(self, scene):
+        from sklearn.ensemble import RandomForestRegressor
+        return RandomForestRegressor(max_depth=scene[0], min_samples_split=scene[1], min_samples_leaf=scene[2], max_features=scene[3], min_impurity_decrease=scene[4], n_jobs=-1)
 # SVR
 # TheilSenRegressor
 # RANSACRegressor
@@ -99,7 +109,6 @@ class regression_test:
 @click.option('-cf', '--config_file',
               default='',
               help='The yaml file with the configurations for the run.')
-@click.option('')
 @click.option('-of', '--output_file',
               default='',
               help='The file to save the results and parameters of the run.')
@@ -110,17 +119,18 @@ def test(config_file, output_file, best_results):
     '''
     This script simulate various regressor algorithms based on the parameters described in the yaml file.
     The results could be outputed to a csv file or/and printed to the screen.
-    '''
-    #TODO alther this part to 
-    with open('reg_est.yaml', 'r') as f:
+    ''' 
+    with open(config_file, 'r') as f:
         conf=load(f, Loader=Loader)
     from sklearn.model_selection import train_test_split
-    from sklearn.datasets import load_diabetes
-    X, y=load_diabetes(return_X_y=True)
-    X_train, X_test, y_train, y_test=train_test_split(X, y)
+    data = pd.read_csv(conf['General']['dataset_file'])
+    X = data[conf['General']['x_column']]
+    y = data[conf['General']['y_column']]
+    X_train, X_test, y_train, y_test=train_test_split(X, y, test_size=conf['General']['test_size'])
     tester=regression_test(conf, X_train, X_test, y_train, y_test)
-    tester.test()
-    tester.results.to_csv('results.csv')
+    tester.test(best_results=best_results)
+    if os.path.isfile(output_file):
+        tester.results.to_csv(output_file)
 
 if __name__ == '__main__':
     test()
